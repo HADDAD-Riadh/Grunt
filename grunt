@@ -1,0 +1,318 @@
+'use strict';
+
+
+module.exports = function (grunt) {
+
+  // Time how long tasks take. Can help when optimizing build times
+  require('time-grunt')(grunt);
+
+  // Load multiple grunt tasks from dependencies
+  require('load-grunt-tasks')(grunt);
+
+  // Configurable paths for the application
+  var appConfig = {
+    app: 'app',
+    dist: 'build/dist'
+  };
+
+  // Define the configuration for all the tasks
+  grunt.initConfig({
+
+    // Project settings
+    pkg: grunt.file.readJSON('package.json'),
+    clientweb: appConfig,
+
+    // Watches files for changes and runs tasks based on the changed files
+    watch: {
+      options: {
+        // live reloading to all your watch targets
+        // this will run a single live reload server and trigger the live reload for all your watch targets
+        livereload: true
+      },
+      js: {
+        files: ['<%= clientweb.app %>/*.js',
+          '<%= clientweb.app %>/assets/{,*/}*.js',
+          '<%= clientweb.app %>/components/{,*/}*.js',
+          '<%= clientweb.app %>/components/common/{,*/}*.js'],
+        tasks: ['eslint']
+      },
+      jsTest: {
+        files: ['test/spec/{,*/}/{,*/}*.js'],
+        tasks: ['eslint', 'karma']
+      },
+      styles: {
+        files: ['<%= clientweb.app %>/assets/css/{,*/}*.css']
+      },
+      gruntfile: {
+        files: ['Gruntfile.js']
+      },
+      livereload: {
+        options: {
+          livereload: '<%= connect.options.livereload %>'
+        },
+        files: [
+          '<%= clientweb.app %>/{,*/}*.html',
+          '<%= clientweb.app %>/components/{,*/}*.html',
+          '.tmp/styles/{,*/}*.css',
+          '<%= clientweb.app %>/assets/img/{,*/}*.{png,jpg,jpeg,gif,webp}',
+          '<%= clientweb.app %>/assets/fonts/{,*/}*.{eot,svg,ttf,woff,woff2}',
+          '<%= clientweb.app %>/assets/libs/bootstrap/fonts/{,*/}*.{eot,svg,ttf,woff,woff2}'
+
+        ]
+      }
+    },
+
+    // The actual grunt server settings
+    connect: {
+      options: {
+        port: 9000,
+        // Change this to '0.0.0.0' to access the server from outside.
+        hostname: 'localhost',
+        livereload: 35729
+      },
+      livereload: {
+        options: {
+          open: true,
+          middleware: function (connect) {
+            return [
+              connect.static('.tmp'),
+              connect().use(
+                '/libs',
+                connect.static('./libs')
+              ),
+              connect().use(
+                '/app/assets/css',
+                connect.static('./app/assets/css')
+              ),
+              connect.static(appConfig.app)
+            ];
+          }
+        }
+      },
+      test: {
+        options: {
+          port: function() {
+            return parseInt('90' + Math.floor(Math.random() * 90 + 10));
+          }(),
+          middleware: function (connect) {
+            return [
+              connect.static('.tmp'),
+              connect.static('test'),
+              connect().use(
+                '/libs',
+                connect.static('./libs')
+              ),
+              connect.static(appConfig.app)
+            ];
+          }
+        }
+      },
+      dist: {
+        options: {
+          open: true,
+          base: '<%= clientweb.dist %>'
+        }
+      }
+    },
+
+
+    // Empties folders to start fresh
+    clean: {
+      dist: {
+        files: [{
+          dot: true,
+          src: [
+            '.tmp',
+            'livrable',
+            '<%= clientweb.dist %>/{,*/}*',
+            '!<%= clientweb.dist %>/.git{,*/}*'
+          ]
+        }]
+      },
+      server: ['.tmp', 'build/report/**'],
+      afterconcat: ['<%= clientweb.dist %>/components/**/*.js', '!app.route.js', '!config.js']
+    },
+
+
+    // Copies remaining files to places other tasks can use
+    copy: {
+      dist: {
+        files: [{
+          expand: true,
+          dot: true,
+          cwd: '<%= clientweb.app %>',
+          dest: '<%= clientweb.dist %>',
+          src: [
+            '*.{ico,png,txt}',
+            '*.html',
+            '*.js',
+            'assets/img/{,*/}*.*',
+            'assets/css/{,*/}*.*',
+            'assets/libs/{,*/}*.*',
+            'assets/libs/{,*/}/{,*/}*.*',
+            'assets/libs/{,*/}/{,*/}/{,*/}*.*',
+            'assets/libs/{,*/}/{,*/}/{,*/}/{,*/}*.*',
+            'components/{,*/}*.js',
+            'components/{,*/}/{,*/}*.js',
+            'assets/js/{,*/}*.json',
+            'assets/js/{,*/}*.js',
+            'assets/fonts/{,*/}*.{eot,ttf,woff,woff2}',
+            'components/{,*/}*.properties',
+            'components/{,*/}*.html',
+            'language/{,*/}*.json',
+            'version'
+          ]
+        }
+      ]
+    }
+  },
+
+  compress: {
+    dist: {
+      options: {
+        archive: 'build/livrable/<%= pkg.name %>.zip'
+      },
+      files: [{src: ['**/*'], cwd: 'build/dist', expand: true}]
+    }
+  },
+
+  // Test settings
+  karma: {
+    unit: {
+      configFile: 'test/karma.conf.js',
+      singleRun: true
+    }
+  },
+
+  eslint: {
+    'options': {
+      'format': 'html',
+      'outputFile': 'build/report/eslint.report.html',
+      'silent': 'true'
+
+    },
+    target: ['app/components/**/*.js']
+  },
+
+  ngAnnotate: {
+    options: {
+      singleQuotes: true
+    },
+    dist: { //"dist" target
+    files: [
+      {
+        expand: true,
+        dot: true,
+        cwd: '<%= clientweb.dist %>',
+        dest: '<%= clientweb.dist %>',
+        src: [
+          '*.js', 'components/**/*.js', '!app.route.js', '!config.js'
+        ]
+      }
+    ]
+  }
+},
+
+concat: {
+  options: {
+    separator: ';\n',
+    // Replace all 'use strict' statements in the code with a single one at the top
+    banner: "'use strict';\n",
+    process: function(src, filepath) {
+      return '// Source: ' + filepath + '\n' +
+      src.replace(/(^|\n)[ \t]*('use strict'|"use strict");?\s*/g, '$1');
+    }
+  },
+  dist: { //target
+    src: ['<%= clientweb.dist %>/app.module.js', '<%= clientweb.dist %>/components/**/*.js', '!app.route.js', '!config.js'],
+    dest: '<%= clientweb.dist %>/app.module.js'
+  }
+},
+
+// distconcat target : minify just app.module.js if concat before, of minify all js with dist target
+// FIXME : Warning with all components imports js in index.html !
+    uglify: {
+      dist: {
+
+        files: {
+
+        'test.min.js': [
+          '<%= clientweb.dist %>/components/common/services/*.js',
+          
+         
+
+
+          '!app.module.js', '!app.route.js', '!config.js']
+
+         // 'test.min.js': ['<%= clientweb.dist %>/components/**/*.js','!app.module.js', '!app.route.js', '!config.js']
+        }
+      }
+
+
+      ,
+      distconcat: {
+        src: ['<%= clientweb.dist %>/app.module.js'],
+        dest: '<%= clientweb.dist %>/app.module.js'
+      }
+    }
+
+
+});
+
+grunt.registerTask('serve', 'Compile then start a connect web server', function (target) {
+  if (target === 'dist') {
+    return grunt.task.run(['build', 'connect:dist:keepalive']);
+  }
+
+  grunt.task.run([
+    'clean:server',
+    'connect:livereload',
+    'watch'
+  ]);
+});
+
+grunt.registerTask('server', 'DEPRECATED TASK. Use the "serve" task instead', function (target) {
+  grunt.log.warn('The `server` task has been deprecated. Use `grunt serve` to start a server.');
+  grunt.task.run(['serve:' + target]);
+});
+
+grunt.registerTask('test', [
+  'clean:server',
+  'connect:test',
+  'karma'
+]);
+
+grunt.registerTask('minifyAndConcat', [
+  'ngAnnotate:dist',
+  'concat:dist',
+  'clean:afterconcat',
+  'uglify:distconcat'
+]);
+
+grunt.registerTask('minify', [
+  'ngAnnotate:dist',
+  'uglify:dist'
+]);
+
+grunt.registerTask('build', [
+  'clean:dist',
+  'copy:dist',
+  'minify'
+]);
+
+grunt.registerTask('reports', [
+  'test',
+  'eslint'
+]);
+
+grunt.registerTask('package', [
+  'build',
+  'compress'
+]);
+
+
+grunt.registerTask('default', [
+  'reports',
+  'build'
+]);
+};
